@@ -1,0 +1,42 @@
+/*
+Circle in Turtell
+Sean O'Kelly, 2010-12-06
+*/
+
+main()
+{
+    penUp;
+    move -100, 0;
+    penDown;
+    circle(300, 12, 2);
+}
+
+circle(radius, iterations, recursions)
+{
+    if(recursions > 0)
+    {
+        circ = 2 * radius * pi;
+        angle_change = 360 / iterations;
+        dist = circ / iterations;
+        
+        angle_counter = 0;
+<<<<<<< .mine
+        i = 0;
+	fd dist;
+        while(i < iterations)
+=======
+        for(i, 0, iterations)
+>>>>>>> .r78
+        {
+            if(angle_counter >= 60)
+            {
+                circle((radius / 6), iterations/2, (recursions - 1));
+                angle_counter = 0;
+            }
+            
+            forward dist;
+            right angle_change;
+            angle_counter = angle_counter + angle_change;
+        }
+    }
+}
