@@ -3,12 +3,12 @@ module Lang where
 import Turtle
 import Graphics.Gloss
 import Debug.Trace
-import Random
+import System.Random
 import Data.Char
 
 -- Expression - parser doesn't care about type, so type checking needs to be done in interp.
 data Expr = Var String
-          
+
           | Val Value
           | Add Expr Expr
           | Mul Expr Expr
@@ -27,7 +27,7 @@ data Expr = Var String
           | Round Expr
           | Floor Expr
           | Random Expr
-          
+
           | Greater Expr Expr
           | Less Expr Expr
           | Equal Expr Expr
@@ -37,12 +37,12 @@ data Expr = Var String
           | And Expr Expr
           | Or Expr Expr
           | Not Expr
-          
+
           | ToString Expr
           | StringElem Expr Expr
           | StringRange Expr Expr Expr
           | StringLength Expr
-        
+
     deriving Show
 
 data Value = Decimal Float
@@ -134,30 +134,30 @@ eval locs exp = case exp of
       -- create an infinite list of PR floats
       randFloats :: Int -> [Float]
       randFloats seed = randoms (mkStdGen seed)
-	
-      -- returns a float from a list 
+
+      -- returns a float from a list
       getFloat :: Int -> [Float] -> Float
       getFloat _ [] = 1.0
       getFloat index (x:xs) = getItem (x:xs) 0 index
-	                      
+
       -- Recurse through list until current == n
       getItem :: [a] -> Int -> Int -> a
       getItem (x:xs) current index | current < index = getItem xs (current+1) index
 	                                   | current == index = x
-                       
-      -- returns a random Float                         
+
+      -- returns a random Float
       rand :: Int -> Int -> Float
       rand seed index = getFloat index (randFloats seed)
-	
+
       --end 080010347's code
-	
+
       getRand e =
 	  case (eval locs e) of
 	    Just (Yarn str) -> Just (Decimal (rand (length str) (foldr (\x xs -> ord x + xs) 0 str)))
 	    Just (Decimal f) -> Just (Decimal (rand (floor f) (length (show f))))
 	    Just (Single i) -> Just (Decimal (rand i (length (show i))))
 	    Just (Boolean b) -> if b then Just (Decimal (rand 0 0)) else Just (Decimal (rand 1 1))
-      
+
       checkedStringLength s =
           case (eval locs s) of
             Just (Yarn str) -> Just (Single (length str))
@@ -166,12 +166,12 @@ eval locs exp = case exp of
           case (eval locs s, eval locs i1, eval locs i2) of
             (Just (Yarn str), Just (Single int1), Just (Single int2)) -> Just (Yarn (fst (splitAt int2 (snd (splitAt int1 str)))))
             _ -> Nothing
-      
+
       checkedStringElem s i =
           case (eval locs s, eval locs i) of
             (Just (Yarn str), Just (Single int)) -> safeElem str int 0
             _ -> Nothing
-      
+
       safeElem "" i c = Nothing
       safeElem (x:xs) i c | c == i = Just (Yarn [x])
                           | otherwise = safeElem xs i (c+1)
@@ -191,7 +191,7 @@ eval locs exp = case exp of
             Just (Decimal f) -> Just (Single (round f))
             Just (Single i) -> Just (Single i)
             _ -> Nothing
-                         
+
       checkVar s = case lookup s locs of
                    Just v -> Just v
                    Nothing -> Nothing
@@ -207,7 +207,7 @@ eval locs exp = case exp of
             (Just (Decimal f), Just (Single i)) -> Just (Decimal (fun f (fromIntegral i)))
             (Just (Single i), Just (Decimal f)) -> Just (Decimal (fun (fromIntegral i) f))
             (Just (Single i1), Just (Single i2)) -> Just (Single (floor (fun (fromIntegral i1) (fromIntegral i2))))
-            _ -> Nothing 
+            _ -> Nothing
 
 
       checkedAdd e1 e2 =
@@ -231,7 +231,7 @@ eval locs exp = case exp of
             (Just (Decimal f), Just (Single i)) -> Just (Decimal (f / fromIntegral i))
             (Just (Single i), Just (Decimal f)) -> Just (Decimal (fromIntegral i / f))
             (Just (Single i1), Just (Single i2)) -> Just (Single (i1 `div` i2))
-            _ -> Nothing 
+            _ -> Nothing
 
       checkedPower e1 e2 =
           case (eval locs e1, eval locs e2) of
@@ -239,7 +239,7 @@ eval locs exp = case exp of
             (Just (Decimal f), Just (Single i)) -> Just (Decimal (f ^^ i))
             (Just (Single i), Just (Decimal f)) -> Just (Decimal (fromIntegral i ** f))
             (Just (Single i1), Just (Single i2)) -> Just (Single (i1 ^ i2))
-            _ -> Nothing 
+            _ -> Nothing
 
       checkedEqual e1 e2 =
           case (eval locs e1, eval locs e2) of
@@ -310,8 +310,8 @@ eval locs exp = case exp of
           case (eval locs e) of
             (Just (Boolean b)) -> Just (Boolean (not b))
             _ -> Nothing
-      
-            
+
+
 -- We need more interp functions - this one handles one function call
 -- also need to handle Seq [Program] which is a list of function calls and
 -- turtle commands, and T TurtleCmd which is a single turtle command.
@@ -344,33 +344,24 @@ interp defs locs (Print exp) =
       Just (Decimal f) -> if trace (show f) True then Just nothing else Just nothing
       Just (Single i) -> if trace (show i) True then Just nothing else Just nothing
       _ -> Nothing
-        
 
 interp defs locs (T (ChColour col))
     = case col of
         C colour -> Just (chColour colour)
-        RGBA e0 e1 e2 e3 -> executeColourCh e0 e1 e2 e3
-                            where
-                              executeColourCh e0 e1 e2 e3 = 
-                                  --There must be an easier way to do this...
-                                  case (ev e0, ev e1, ev e2, ev e3) of
-                                    (Just (Decimal r), Just (Decimal g), Just (Decimal b), Just (Decimal a)) -> Just (chColour (makeColor r g b a))
-                                    (Just (Decimal r), Just (Decimal g), Just (Decimal b), Just (Single a)) -> Just (chColour (makeColor r g b (fromIntegral a)))
-                                    (Just (Decimal r), Just (Decimal g), Just (Single b), Just (Decimal a)) -> Just (chColour (makeColor r g (fromIntegral b) a))
-                                    (Just (Decimal r), Just (Decimal g), Just (Single b), Just (Single a)) -> Just (chColour (makeColor r g (fromIntegral b) (fromIntegral a)))
-                                    (Just (Decimal r), Just (Single g), Just (Decimal b), Just (Decimal a)) -> Just (chColour (makeColor r (fromIntegral g) b a))
-                                    (Just (Decimal r), Just (Single g), Just (Decimal b), Just (Single a)) -> Just (chColour (makeColor r (fromIntegral g) b (fromIntegral a)))
-                                    (Just (Decimal r), Just (Single g), Just (Single b), Just (Single a)) -> Just (chColour (makeColor r (fromIntegral g) (fromIntegral b) (fromIntegral a)))
-                                    (Just (Single r), Just (Decimal g), Just (Decimal b), Just (Decimal a)) -> Just (chColour (makeColor (fromIntegral r) g b a))
-                                    (Just (Single r), Just (Decimal g), Just (Decimal b), Just (Single a)) -> Just (chColour (makeColor (fromIntegral r) g b (fromIntegral a)))
-                                    (Just (Single r), Just (Decimal g), Just (Single b), Just (Decimal a)) -> Just (chColour (makeColor (fromIntegral r) g (fromIntegral b) a))
-                                    (Just (Single r), Just (Decimal g), Just (Single b), Just (Single a)) -> Just (chColour (makeColor (fromIntegral r) g (fromIntegral b) (fromIntegral a)))
-                                    (Just (Single r), Just (Single g), Just (Decimal b), Just (Decimal a)) -> Just (chColour (makeColor (fromIntegral r) (fromIntegral g) b a))
-                                    (Just (Single r), Just (Single g), Just (Decimal b), Just (Single a)) -> Just (chColour (makeColor (fromIntegral r) (fromIntegral g) b (fromIntegral a)))
-                                    (Just (Single r), Just (Single g), Just (Single b), Just (Decimal a)) -> Just (chColour (makeColor (fromIntegral r) (fromIntegral g) (fromIntegral b) a))
-                                    (Just (Single r), Just (Single g), Just (Single b), Just (Single a)) -> Just (chColour (makeColor (fromIntegral r) (fromIntegral g) (fromIntegral b) (fromIntegral a)))
-                                    _ -> Nothing
-                              ev exp = eval locs exp
+        RGBA e0 e1 e2 e3 ->
+             executeColourCh e0 e1 e2 e3
+                 where
+                     canonicalise (Just (Decimal e)) = e
+                     canonicalise (Just (Single e))  = fromIntegral e
+
+                     executeColourCh a b c d =
+                         Just $ chColour
+                              $ makeColor
+                              (canonicalise $ ev a)
+                              (canonicalise $ ev b)
+                              (canonicalise $ ev c)
+                              (canonicalise $ ev d)
+                     ev exp = eval locs exp
 
 interp defs locs (T cmd)
     = case cmd of
@@ -381,7 +372,7 @@ interp defs locs (T cmd)
         Up -> Just penUp
         Down -> Just penDown
       where
-        chkArg arg fun = 
+        chkArg arg fun =
             case (eval locs arg) of
               Just (Decimal f) -> Just (fun f)
               Just (Single i) -> Just (fun (fromIntegral i))
@@ -403,7 +394,7 @@ interp defs locs (Seq (While e p:xs)) =
       stringCmds (Seq progs) = interp defs locs (Seq (progs++[While e p]++xs))
       singleInterp (Seq progs) = interp defs locs (Seq (progs++xs))
 
-                 
+
 
 interp defs locs (Seq (For v i1 i2 p:xs)) =
     case (eval locs i1, eval locs i2) of
@@ -425,13 +416,13 @@ interp defs locs (Seq (For v i1 i2 p:xs)) =
       checkInterp inc ls i (Seq progs) =
           interp defs ls (Seq (progs ++ [For v (Val (Single (i+inc))) i2 p]++xs))
 
-      correctEquals int1 = 
+      correctEquals int1 =
           case new_locs int1 of
             Just ls -> correctEquals' p ls
             Nothing -> Nothing
 
       correctEquals' (Seq pr) ls = interp defs ls (Seq (pr++xs))
-          
+
       checkCont int1 int2
           | int1 > int2 = checkLocs (-1) (Single int1)
           | int1 == int2 = correctEquals (Single int1)
@@ -443,7 +434,7 @@ interp defs locs (Seq (If e [p1, p2]:xs))
         Just (Boolean b) -> if b then passUp p1 else passUp p2
         _ -> Nothing
       where
-        passUp (Seq pr) = interp defs locs (Seq (pr ++ xs)) 
+        passUp (Seq pr) = interp defs locs (Seq (pr ++ xs))
         passUp another_if = interp defs locs (Seq ([another_if] ++ xs))
 
 
@@ -452,7 +443,7 @@ interp defs locs (Seq (If e [p]:xs))
         Just (Boolean b) -> if b then passUp p else interp defs locs (Seq xs)
         _ -> Nothing
       where
-        passUp (Seq pr) = interp defs locs (Seq (pr ++ xs)) 
+        passUp (Seq pr) = interp defs locs (Seq (pr ++ xs))
 
 
 interp defs locs (Seq []) = Just nothing
@@ -460,8 +451,7 @@ interp defs locs (Seq (Assign v f:xs)) =
     case (eval locs f) of
       Just val -> interp defs (filter (\x -> fst x /= v) locs ++ [(v, val)]) (Seq xs)
       Nothing -> Nothing
-interp defs locs (Seq (x:xs)) = 
+interp defs locs (Seq (x:xs)) =
     case (interp defs locs x, interp defs locs (Seq xs)) of
       (Just c1, Just c2) -> Just (c1 +> c2)
       _ -> Nothing
-

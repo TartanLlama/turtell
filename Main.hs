@@ -9,15 +9,16 @@ module. All parsers in this module ignore whitespace.
 
 module Main where
 
-import System
-import IO
-import Monad
+import System.IO
+import System.Environment
+import Control.Exception
+import Control.Monad
 import Graphics.Gloss
 
 import Turtle
 import Lang
 
-import Random
+import System.Random
 
 import Parsing
 
@@ -36,7 +37,7 @@ main = do {
         (filename:_) -> do {
             -- The filename has been passed in via args, try to read/parse it.
             putStrLn ("Reading " ++ filename ++ "...");
-            catch (run_program filename) failure;
+            run_program filename;
         } where {
             -- run_program: parses program (doesn't actually run program yet)
             run_program :: String -> IO ();

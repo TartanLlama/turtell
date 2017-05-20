@@ -68,7 +68,7 @@ octagon x = rt 45 +> fd x +> rt 45 +> fd x +>
 runTurtle :: Maybe Command -> IO ()
 runTurtle cmd = 
     case cmd of
-      Just c -> displayInWindow "Turtell" (640,480) (50,50) black 
+      Just c -> display (InWindow "Turtell" (640,480) (50,50)) black 
                 (snd (c start))
       Nothing -> putStrLn "Type error."
 
